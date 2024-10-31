@@ -1,5 +1,6 @@
 const { createBlogSchema, contentSchema, titleSchema } = require("../utils/validationSchema");
 const Blog = require("../models/blog");
+const redis = require("../database/redisDatabase");
 
 
 const createBlog = async (req, res) => {
@@ -25,6 +26,10 @@ const createBlog = async (req, res) => {
             user_id: req.user.id, // User ID from the token
         });
 
+        // Invalidate the cache after creating a new blog
+        await redis.del('blogs'); // Remove cached blogs
+
+
         res.status(201).json({ message: "Blog created successfully", blog });
     } catch (err) {
         console.error("Blog creation error:", err);
@@ -42,9 +47,20 @@ const fetchBlog = async (req, res) => {
             if (!blog) return res.status(404).json({ error: "Blog not found" });
             return res.json({ message: "Blog retrieved successfully", data: blog });
         }
+        // define a key for caching in redis
+        const cacheKey = "blogs";
+        const cachedBlods = await redis.get(cacheKey);
 
+        if (cachedBlods) {
+            // If cache exists, return cached data
+            return res.json(JSON.parse(cachedBlods));
+        }
+
+        // If cache doesn't exist, fetch from database
         // Fetch all blog posts
         const blogs = await Blog.findAll();
+        await redis.set(cacheKey, JSON.stringify(blogs), 'EX', 3600); // Cache for 1 hour
+
         return res.json({ message: "Blogs retrieved successfully", data: blogs });
     } catch (error) {
         console.error("Fetch blog error:", error);
@@ -93,6 +109,11 @@ const updateBlog = async (req, res) => {
 
         // Update the blog post
         await blog.update({ title, content });
+
+        // Invalidate the cache after creating a new blog
+        await redis.del('blogs'); // Remove cached blogs
+
+
         return res.json({ message: "Blog updated successfully", data: blog });
     } catch (error) {
         console.error("Update blog error:", error);
@@ -115,6 +136,10 @@ const deleteBlog = async (req, res) => {
 
         // Delete the blog post
         await blog.destroy();
+
+        // Invalidate the cache after creating a new blog
+        await redis.del('blogs'); // Remove cached blogs
+
         return res.json({ message: "Blog deleted successfully" });
     } catch (error) {
         console.error("Delete blog error:", error);
