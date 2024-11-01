@@ -18,8 +18,8 @@ A RESTful API for managing blog posts, comments, and user authentication, built 
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/johnson-great/blog-api.git
-   cd blog-api
+   git clone https://github.com/Princess585/Webstack-Portfolio-Blog-Api.git
+   cd Webstack-Portfolio-Blog-Api
    ```
 
 2. **Install Dependencies**:
